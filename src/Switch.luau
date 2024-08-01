@@ -78,15 +78,37 @@
 ]]
 
 export type _break = () -> ()
-export type handler<Args...> = (_break, Args...) -> boolean?
+export type handler<Args...> = (Args...) -> boolean?
+
+local function mapCases(cases)
+    local map = {}
+    for k, v in cases do
+        map[v._order] = {
+            key = k;
+            val = v;
+        }
+    end
+    return map
+end
 
 local Switch = {}
 Switch.__index = Switch
 
-function Switch:Case<Args...>(value: any, handler: handler<Args...>, ...: Args...)
+function Switch:Case<Args...>(value: any, handler: handler<_break, Args...>, ...: Args...)
+    local order = 0
+    local previousMatch = self._cases[value]
+
+    if previousMatch == nil then
+        self._current_idx += 1
+        order = self._current_idx
+    else
+        order = previousMatch._order
+    end
+
     self._cases[value] = {
         _callback = handler;
         _args = {...};
+        _order = order;
     }
 
     return self
@@ -109,11 +131,14 @@ function Switch:__call()
     self._started = true
     self._use_default = true
 
-    for value, handler in self._cases do
-        if value ~= self._value then
+    local caseMap = mapCases(self._cases)
+
+    for _, case in caseMap do
+        if case.key ~= self._value then
             continue
         end
 
+        local handler = case.val
 		local _break = handler._callback(
             function()
                 return true
@@ -149,8 +174,13 @@ function exports.new(value: any)
     local self = setmetatable({}, Switch)
 
     self._value = value
+    self._default = nil
+    self._current_idx = 0
+    self._started = false
+    self._use_default = true
+    self._cases = {}
 
-    return self
+    return table.freeze(self)
 end
 
 return table.freeze(exports)
