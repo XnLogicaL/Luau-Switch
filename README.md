@@ -37,7 +37,7 @@ The `_break` function is used to break out of the switch, which means that the r
 To activate the switch, simply call it:
 
 ```lua
-local mySwitch = Switch.new()
+local mySwitch = Switch.new(value)
 
 mySwitch()
 ```
