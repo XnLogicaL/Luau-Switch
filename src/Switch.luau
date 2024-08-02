@@ -77,7 +77,7 @@
 
 ]]
 
-export type _break = () -> ()
+export type Break = () -> ()
 export type handler<Args...> = (Args...) -> boolean?
 
 local function mapCases(cases)
@@ -94,7 +94,7 @@ end
 local Switch = {}
 Switch.__index = Switch
 
-function Switch:Case<Args...>(value: any, handler: handler<_break, Args...>, ...: Args...)
+function Switch:Case<Args...>(value: any, handler: handler<Break, Args...>, ...: Args...)
     local order = 0
     local previousMatch = self._cases[value]
 
@@ -139,7 +139,7 @@ function Switch:__call()
         end
 
         local handler = case.val
-		local _break = handler._callback(
+		local Break = handler._callback(
             function()
                 return true
             end,
@@ -148,7 +148,7 @@ function Switch:__call()
 
 		self._use_default = false
 
-		if _break ~= nil then
+		if Break ~= nil then
 			break
 		end
     end
