@@ -23,13 +23,16 @@
     ```lua
         local Switch = Switch.new(value)
             :Case(value, function(breakOut, ...)
-                breakOut()
+                return breakOut()
+            end)
+	    :Case(value, function(breakOut, ...)
+                return true -- equivilent to `return breakOut()`
             end)
             :Case(value2, func)
     ```
 
     The `:Case()` method adds a new possible case to the switch object
-    If the `break` argument is called, the switch stops evaluating and initiates cleanup.
+    If the `break` argument is called and returned (or `true` is returned), the switch stops evaluating and initiates cleanup.
 
     * Chainable.
 
