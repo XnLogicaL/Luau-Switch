@@ -27,12 +27,13 @@ This makes it so that you don't have to make a new expression everytime you need
 
 ```lua
 mySwitch
-  :Case(someValue, function(_break)
+  :Case(someValue, function()
     -- does stuff if the switches value matches the given value.
+    return "non-nil value!"
   end)
 ```
 
-The `_break` function is used to break out of the switch, which means that the rest of the cases won't be executed. Including the `default` case.
+If the case returns a non-nil value, the switch will return that value, which means that the rest of the cases won't be executed. Including the `default` case.
 
 To activate the switch, simply call it:
 
