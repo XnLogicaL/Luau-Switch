@@ -170,10 +170,7 @@ function Switch:Destroy()
     setmetatable(self, nil)
 end
 
-local exports = {}
-exports.__index = exports
-
-function exports.new(value: any)
+function Switch.new(value: any)
     local self = setmetatable({}, Switch)
 
     self._value = value
@@ -186,4 +183,4 @@ function exports.new(value: any)
     return table.freeze(self)
 end
 
-return table.freeze(exports)
+return Switch
