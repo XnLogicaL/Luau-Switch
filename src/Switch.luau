@@ -22,17 +22,14 @@
 
     ```lua
         local Switch = Switch.new(value)
-            :Case(value, function(breakOut, ...)
-                return breakOut()
-            end)
-	    :Case(value, function(breakOut, ...)
-                return true -- equivilent to `return breakOut()`
+            :Case(value, function(...)
+                return false
             end)
             :Case(value2, func)
     ```
 
     The `:Case()` method adds a new possible case to the switch object
-    If the `break` argument is called and returned (or `true` is returned), the switch stops evaluating and initiates cleanup.
+    If the function returns anything other than `nil`, the switch finalizes and returns the return value.
 
     * Chainable.
 
@@ -59,7 +56,6 @@
         local Switch = Switch.new(value)
             :Case(value, func)
             :Case(value2, func)
-
             :Default(func)
 
         Switch()
@@ -86,7 +82,7 @@ export type handler<Args...> = (Args...) -> boolean?
 local function mapCases(cases)
     local map = {}
     for k, v in cases do
-        map[v._order] = {
+        map[v.Order] = {
             key = k;
             val = v;
         }
@@ -99,70 +95,69 @@ Switch.__index = Switch
 
 function Switch:Case<Args...>(value: any, handler: handler<Break, Args...>, ...: Args...)
     local order = 0
-    local previousMatch = self._cases[value]
+    local previousMatch = self.Cases[value]
 
     if previousMatch == nil then
-        self._current_idx += 1
-        order = self._current_idx
+        self.CurrentIdx += 1
+        order = self.CurrentIdx
     else
-        order = previousMatch._order
+        order = previousMatch.Order
     end
 
-    self._cases[value] = {
-        _callback = handler;
-        _args = {...};
-        _order = order;
+    self.Cases[value] = {
+        Callback = handler;
+        Args = {...};
+        Order = order;
     }
 
     return self
 end
 
 function Switch:Default<Args...>(handler: handler<Args...>, ...: Args...)
-    self._default = {
-        _callback = handler;
-        _args = {...};
+    self.Default = {
+        Callback = handler;
+        Args = {...};
     }
     
     return self
 end
 
 function Switch:__call()
-    if self._started then
+    if self.Started then
         error("switch has already been evaluated!")
     end
 
-    self._started = true
-    self._use_default = true
+    self.Started = true
+    self.UseDefault = true
 
-    local caseMap = mapCases(self._cases)
+    local ret
+    local caseMap = mapCases(self.Cases)
 
     for _, case in caseMap do
-        if case.key ~= self._value then
+        if case.key ~= self.Value then
             continue
         end
 
-        local handler = case.val
-		local Break = handler._callback(
-            function()
-                return true
-            end,
-            table.unpack(handler._args)
-        )
+        local handler = case.value
+        local localRet = handler.Callback(table.unpack(handler.Args))
 
-		self._use_default = false
+		self.UseDefault = false
 
-		if Break ~= nil then
-			break
+		if localRet ~= nil then
+			ret = localRet
+            break
 		end
     end
 
-    if self._use_default and self._default ~= nil then
-        self._default._callback(
-            table.unpack(self._default._args)
+    if self.UseDefault and self.Default ~= nil then
+        self.Default.Callback(
+            table.unpack(self.Default.Args)
         )
     end
 
     self:Destroy()
+
+    return ret
 end
 
 function Switch:Destroy()
@@ -173,12 +168,12 @@ end
 function Switch.new(value: any)
     local self = setmetatable({}, Switch)
 
-    self._value = value
-    self._default = nil
-    self._current_idx = 0
-    self._started = false
-    self._use_default = true
-    self._cases = {}
+    self.Value = value
+    self.Default = nil
+    self.CurrentIdx = 0
+    self.Started = false
+    self.UseDefault = true
+    self.Cases = {}
 
     return table.freeze(self)
 end
