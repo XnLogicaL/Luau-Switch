@@ -76,82 +76,87 @@
 
 ]]
 
-export type Break = () -> ()
-export type handler<Args...> = (Args...) -> boolean?
+type _VType<_Ret> = _Ret | any?
 
-local function mapCases(cases)
-    local map = {}
-    for k, v in cases do
-        map[v.Order] = {
-            key = k;
-            val = v;
-        }
-    end
-    return map
-end
+export type Switch<_Ret> = {
+    Case: <_Args...>(
+        self: Switch<_Ret>,
+        value: _VType<_Ret>,
+        handler: (_Args...) -> _VType<_Ret>?,
+        _Args...
+    ) -> Switch<_Ret>;
+
+    Default: <_Args...>(
+        self: Switch<_Ret>,
+        handler: (_Args...) -> _VType<_Ret>?,
+        _Args...
+    ) -> Switch<_Ret>;
+
+    Destroy: (self: Switch<_Ret>) -> ();
+    __call: (self: Switch<_Ret>) -> _VType<_Ret>;
+}
+
+export type SwitchConstructor = {
+    new: <_Ty>(value: _Ty) -> Switch<_Ty>;
+}
 
 local Switch = {}
 Switch.__index = Switch
 
-function Switch:Case<Args...>(value: any, handler: handler<Break, Args...>, ...: Args...)
-    local order = 0
-    local previousMatch = self.Cases[value]
-
-    if previousMatch == nil then
-        self.CurrentIdx += 1
-        order = self.CurrentIdx
-    else
-        order = previousMatch.Order
+function Switch:Case(value, handler, ...)
+    local currentCase = self._CasesHead
+    
+    while self._CasesHead._Next ~= nil do
+        currentCase = self._CasesHead._Next
     end
 
-    self.Cases[value] = {
-        Callback = handler;
-        Args = {...};
-        Order = order;
+    currentCase._Next = {
+        _Value = value;
+        _Callback = handler;
+        _Args = {...};
+        _Next = nil;
     }
 
     return self
 end
 
-function Switch:Default<Args...>(handler: handler<Args...>, ...: Args...)
+function Switch:Default(handler, ...)
     self.Default = {
-        Callback = handler;
-        Args = {...};
+        _Callback = handler;
+        _Args = {...};
     }
     
     return self
 end
 
 function Switch:__call()
-    if self.Started then
-        error("switch has already been evaluated!")
+    if self._Started then
+        error("attempt to call switch twice")
     end
 
-    self.Started = true
-    self.UseDefault = true
+    self._Started = true
+    self._UseDefault = true
 
     local ret
-    local caseMap = mapCases(self.Cases)
+    local currentCase = self._CasesHead
 
-    for _, case in caseMap do
-        if case.key ~= self.Value then
-            continue
+    while currentCase._Next ~= nil do
+        self._UseDefault = false
+
+        if self._Value == currentCase._Value then
+            ret = currentCase._handler(table.unpack(currentCase._Args))
+
+            if ret ~= nil then
+                break
+            end
         end
 
-        local handler = case.value
-        local localRet = handler.Callback(table.unpack(handler.Args))
-
-		self.UseDefault = false
-
-		if localRet ~= nil then
-			ret = localRet
-            break
-		end
+        currentCase = currentCase._Next
     end
 
-    if self.UseDefault and self.Default ~= nil then
-        self.Default.Callback(
-            table.unpack(self.Default.Args)
+    if self._UseDefault and self._Default ~= nil then
+        self._Default._Callback(
+            table.unpack(self._Default._Args)
         )
     end
 
@@ -165,17 +170,16 @@ function Switch:Destroy()
     setmetatable(self, nil)
 end
 
-function Switch.new(value: any)
+function Switch.new(value)
     local self = setmetatable({}, Switch)
 
-    self.Value = value
-    self.Default = nil
-    self.CurrentIdx = 0
-    self.Started = false
-    self.UseDefault = true
-    self.Cases = {}
+    self._Value = value
+    self._Default = nil
+    self._Started = false
+    self._UseDefault = true
+    self._CaseHead = {}
 
     return table.freeze(self)
 end
 
-return Switch
+return Switch :: SwitchConstructor
