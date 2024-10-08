@@ -1,5 +1,5 @@
 # Luau-Switch
-A lightweight library to attempts to bring "switch" statements to Roblox.
+A lightweight library to attempts to replicate switch statements in Luau.
 
 # What is a "Switch" and why use it? 
 
